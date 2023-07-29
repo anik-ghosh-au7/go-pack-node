@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -8,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"unicode"
+
+	"github.com/anik-ghosh-au7/go-pack-node/schema"
 )
 
 func ToSnakeCase(str string) string {
@@ -160,4 +163,46 @@ func CopyFile(src string, dst string) error {
 	}
 
 	return out.Close()
+}
+
+// ReadDepFiles reads the dependencies.json and dependencies-lock.json files
+// and returns them as Dependency and DepLock objects respectively.
+func ReadDepFiles(depFile string, lockFile string) (*schema.Dependency, *schema.Dependency) {
+	// Initialize empty Dependency and DepLock objects
+	dep := &schema.Dependency{}
+	lock := &schema.Dependency{}
+
+	// Read the dependencies.json file
+	file, _ := os.ReadFile(depFile)
+	json.Unmarshal(file, dep)
+
+	// Read the dependencies-lock.json file
+	file, _ = os.ReadFile(lockFile)
+	json.Unmarshal(file, lock)
+
+	return dep, lock
+}
+
+// WriteDepFiles writes the given Dependency and DepLock objects to
+// dependencies.json and dependencies-lock.json respectively.
+func WriteDepFiles(depFile string, lockFile string, dep *schema.Dependency, lock *schema.Dependency) {
+	// Marshal dependencies.json
+	depData, err := json.MarshalIndent(dep, "", "  ")
+	if err != nil {
+		fmt.Println(err)
+	}
+	err = os.WriteFile(depFile, depData, 0644)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// Marshal dependencies-lock.json
+	lockData, err := json.MarshalIndent(lock, "", "  ")
+	if err != nil {
+		fmt.Println(err)
+	}
+	err = os.WriteFile(lockFile, lockData, 0644)
+	if err != nil {
+		fmt.Println(err)
+	}
 }

@@ -12,23 +12,19 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/anik-ghosh-au7/go-pack-node/schema"
 	"github.com/anik-ghosh-au7/go-pack-node/utils"
 )
-
-type Dist struct {
-	Tarball string `json:"tarball"`
-}
-
-type PackageVersionInfo struct {
-	Version      string            `json:"version"`
-	Dist         Dist              `json:"dist"`
-	Dependencies map[string]string `json:"dependencies"` // Add this field
-}
 
 func Install(args ...string) {
 	wg := &sync.WaitGroup{}
 	baseDir, _ := os.Getwd() // Get the current working directory
 	depDir := filepath.Join(baseDir, "dependencies")
+	depFile := filepath.Join(baseDir, "dependencies.json")
+	lockFile := filepath.Join(baseDir, "dependencies-lock.json")
+
+	// Read the existing dependencies.json and dependencies-lock.json files
+	deps, lockDeps := utils.ReadDepFiles(depFile, lockFile)
 
 	if len(args) == 0 {
 		// If no args are provided, install all dependencies from dependencies.json
@@ -62,7 +58,11 @@ func Install(args ...string) {
 				}
 
 				// Update dependencies.json and dependencies-lock.json
-				// ... (implementation omitted for brevity) ...
+				deps.Dependencies[packageName] = packageInfo.Version
+
+				// Write the updated dependencies back to the files
+				utils.WriteDepFiles(depFile, lockFile, deps, lockDeps)
+
 				depPackageDir := filepath.Join(depDir, packageName)
 				if utils.DirExists(depPackageDir) {
 					// If it does, delete the folder
@@ -89,7 +89,7 @@ func Install(args ...string) {
 	wg.Wait()
 }
 
-func FetchPackageInfo(packageName string, version string) (*PackageVersionInfo, error) {
+func FetchPackageInfo(packageName string, version string) (*schema.PackageVersionInfo, error) {
 	resp, err := http.Get(fmt.Sprintf("https://registry.npmjs.org/%s/%s", packageName, version))
 	if err != nil {
 		return nil, err
@@ -105,7 +105,7 @@ func FetchPackageInfo(packageName string, version string) (*PackageVersionInfo, 
 		return nil, err
 	}
 
-	var packageInfo PackageVersionInfo
+	var packageInfo schema.PackageVersionInfo
 	err = json.Unmarshal(body, &packageInfo)
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func FetchPackageInfo(packageName string, version string) (*PackageVersionInfo, 
 	return &packageInfo, nil
 }
 
-func DownloadPackage(packageInfo *PackageVersionInfo, destination string) error {
+func DownloadPackage(packageInfo *schema.PackageVersionInfo, destination string) error {
 	resp, err := http.Get(packageInfo.Dist.Tarball)
 	if err != nil {
 		return err
