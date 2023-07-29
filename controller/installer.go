@@ -25,9 +25,10 @@ type PackageVersionInfo struct {
 	Dependencies map[string]string `json:"dependencies"` // Add this field
 }
 
-func Install(depDir string, args ...string) {
+func Install(args ...string) {
 	wg := &sync.WaitGroup{}
 	baseDir, _ := os.Getwd() // Get the current working directory
+	depDir := filepath.Join(baseDir, "dependencies")
 
 	if len(args) == 0 {
 		// If no args are provided, install all dependencies from dependencies.json

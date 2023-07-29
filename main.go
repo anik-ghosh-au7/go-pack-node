@@ -46,7 +46,7 @@ func main() {
 		if len(os.Args) > 2 {
 			packages = os.Args[2:]
 		}
-		controller.Install("dependencies", packages...)
+		controller.Install(packages...)
 	default:
 		log.Fatalf("Error: Invalid command")
 	}
