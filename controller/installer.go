@@ -22,7 +22,7 @@ type Dist struct {
 type PackageVersionInfo struct {
 	Version      string            `json:"version"`
 	Dist         Dist              `json:"dist"`
-	Dependencies map[string]string `json:"dependencies"` // Add this field
+	Dependencies map[string]string `json:"dependencies"`
 }
 
 func Install(args ...string) {
