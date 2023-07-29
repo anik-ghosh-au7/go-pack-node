@@ -22,7 +22,7 @@ type Dist struct {
 type PackageVersionInfo struct {
 	Version      string            `json:"version"`
 	Dist         Dist              `json:"dist"`
-	Dependencies map[string]string `json:"dependencies"`
+	Dependencies map[string]string `json:"dependencies"` // Add this field
 }
 
 func Install(args ...string) {
@@ -37,7 +37,7 @@ func Install(args ...string) {
 		for _, arg := range args {
 			wg.Add(1)
 			go func(arg string) { // Start a goroutine
-				defer wg.Done() // Decrement the count when the goroutine completes
+				defer wg.Done()
 				packageAndVersion := strings.Split(arg, "@")
 				packageName := packageAndVersion[0]
 				packageVersion := "latest"
@@ -63,8 +63,6 @@ func Install(args ...string) {
 
 				// Update dependencies.json and dependencies-lock.json
 				// ... (implementation omitted for brevity) ...
-
-				// Check if the package folder exists in the dependencies directory
 				depPackageDir := filepath.Join(depDir, packageName)
 				if utils.DirExists(depPackageDir) {
 					// If it does, delete the folder
