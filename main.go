@@ -32,7 +32,7 @@ func main() {
 	cacheDir := filepath.Join(dir, ".cache")
 	depFile := filepath.Join(dir, "dependencies.json")
 	lockFile := filepath.Join(dir, "dependencies-lock.json")
-	depDir := filepath.Join(dir, "dependencies")
+	depDir := filepath.Join(dir, "node_modules")
 
 	switch command {
 	case "init":

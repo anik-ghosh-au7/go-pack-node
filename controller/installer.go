@@ -21,7 +21,7 @@ func Install(args ...string) {
 	wg := &sync.WaitGroup{}
 	baseDir, _ := os.Getwd() // Get the current working directory
 	cacheDir := filepath.Join(baseDir, ".cache")
-	depDir := filepath.Join(baseDir, "dependencies")
+	depDir := filepath.Join(baseDir, "node_modules")
 	depFile := filepath.Join(baseDir, "dependencies.json")
 	lockFile := filepath.Join(baseDir, "dependencies-lock.json")
 
