@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/anik-ghosh-au7/go-pack-node/controller"
 	"github.com/anik-ghosh-au7/go-pack-node/utils"
@@ -44,8 +43,8 @@ func main() {
 		controller.Initialize(yFlag, cacheDir, depFile, lockFile, depDir, dir)
 	case "install":
 		var packages []string
-		if len(os.Args) > 3 {
-			packages = strings.Split(os.Args[3], " ")
+		if len(os.Args) > 2 {
+			packages = os.Args[2:]
 		}
 		controller.Install(packages...)
 	default:
