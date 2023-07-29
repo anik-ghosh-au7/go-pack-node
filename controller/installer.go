@@ -19,33 +19,9 @@ type Dist struct {
 }
 
 type PackageVersionInfo struct {
-	Version string `json:"version"`
-	Dist    Dist   `json:"dist"`
-}
-
-func FetchPackageInfo(packageName string, version string) (*PackageVersionInfo, error) {
-	resp, err := http.Get(fmt.Sprintf("https://registry.npmjs.org/%s/%s", packageName, version))
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("failed to fetch package info: %s", resp.Status)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var packageInfo PackageVersionInfo
-	err = json.Unmarshal(body, &packageInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	return &packageInfo, nil
+	Version      string            `json:"version"`
+	Dist         Dist              `json:"dist"`
+	Dependencies map[string]string `json:"dependencies"` // Add this field
 }
 
 func Install(args ...string) {
@@ -83,8 +59,38 @@ func Install(args ...string) {
 
 			// Update dependencies.json and dependencies-lock.json
 			// ... (implementation omitted for brevity) ...
+
+			// Install dependencies
+			for dep := range packageInfo.Dependencies {
+				Install(dep)
+			}
 		}
 	}
+}
+
+func FetchPackageInfo(packageName string, version string) (*PackageVersionInfo, error) {
+	resp, err := http.Get(fmt.Sprintf("https://registry.npmjs.org/%s/%s", packageName, version))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("failed to fetch package info: %s", resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var packageInfo PackageVersionInfo
+	err = json.Unmarshal(body, &packageInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	return &packageInfo, nil
 }
 
 func DownloadPackage(packageInfo *PackageVersionInfo, destination string) error {
