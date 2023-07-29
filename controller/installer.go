@@ -28,7 +28,12 @@ func Install(args ...string) {
 
 	if len(args) == 0 {
 		// If no args are provided, install all dependencies from dependencies.json
-		// ... (implementation omitted for brevity) ...
+		depsToInstall := make([]string, 0, len(deps.Dependencies))
+		for dep, version := range deps.Dependencies {
+			depsToInstall = append(depsToInstall, fmt.Sprintf("%s@%s", dep, version))
+		}
+		Install(depsToInstall...)
+		return
 	} else {
 		for _, arg := range args {
 			wg.Add(1)
@@ -45,6 +50,7 @@ func Install(args ...string) {
 				packageInfo, err := FetchPackageInfo(packageName, packageVersion)
 				if err != nil {
 					fmt.Println("Error fetching package info:", err)
+					return
 				}
 
 				// Check if the version exists in the cache
@@ -54,6 +60,7 @@ func Install(args ...string) {
 					err := DownloadPackage(packageInfo, cacheDir)
 					if err != nil {
 						fmt.Println("Error downloading package:", err)
+						return
 					}
 				}
 
