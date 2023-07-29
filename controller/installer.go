@@ -19,9 +19,31 @@ import (
 func Install(args ...string) {
 	wg := &sync.WaitGroup{}
 	baseDir, _ := os.Getwd() // Get the current working directory
+	cacheDir := filepath.Join(baseDir, ".cache")
 	depDir := filepath.Join(baseDir, "dependencies")
 	depFile := filepath.Join(baseDir, "dependencies.json")
 	lockFile := filepath.Join(baseDir, "dependencies-lock.json")
+
+	// If the cache, dependencies directories or the json files don't exist, create them
+	for _, dir := range []string{cacheDir, depDir, depFile, lockFile} {
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			if strings.HasSuffix(dir, ".json") {
+				// If it's a json file, create the file
+				_, err := os.Create(dir)
+				if err != nil {
+					fmt.Println("Error creating file:", err)
+					return
+				}
+			} else {
+				// Else create the directory
+				err := os.MkdirAll(dir, os.ModePerm)
+				if err != nil {
+					fmt.Println("Error creating directory:", err)
+					return
+				}
+			}
+		}
+	}
 
 	// Read the existing dependencies.json and dependencies-lock.json files
 	deps, lockDeps := utils.ReadDepFiles(depFile, lockFile)
