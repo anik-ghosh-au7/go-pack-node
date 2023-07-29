@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -24,22 +25,25 @@ func Install(args ...string) {
 	depFile := filepath.Join(baseDir, "dependencies.json")
 	lockFile := filepath.Join(baseDir, "dependencies-lock.json")
 
+	// Check if the dependencies.json file exists
+	if _, err := os.Stat(depFile); os.IsNotExist(err) {
+		log.Fatalf("No dependencies.json file found in project root. Please initialize the project first")
+	}
+
 	// If the cache, dependencies directories or the json files don't exist, create them
-	for _, dir := range []string{cacheDir, depDir, depFile, lockFile} {
+	for _, dir := range []string{cacheDir, depDir, lockFile} {
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
 			if strings.HasSuffix(dir, ".json") {
 				// If it's a json file, create the file
 				_, err := os.Create(dir)
 				if err != nil {
-					fmt.Println("Error creating file:", err)
-					return
+					log.Fatalf("Error creating file: %v", err)
 				}
 			} else {
 				// Else create the directory
 				err := os.MkdirAll(dir, os.ModePerm)
 				if err != nil {
-					fmt.Println("Error creating directory:", err)
-					return
+					log.Fatalf("Error creating directory: %v", err)
 				}
 			}
 		}
@@ -71,8 +75,7 @@ func Install(args ...string) {
 				// Fetch package info from npm registry
 				packageInfo, err := FetchPackageInfo(packageName, packageVersion)
 				if err != nil {
-					fmt.Println("Error fetching package info:", err)
-					return
+					log.Fatalf("Error fetching package info: %v", err)
 				}
 
 				// Check if the version exists in the cache
@@ -81,8 +84,7 @@ func Install(args ...string) {
 					// If not, download it and save it in the cache
 					err := DownloadPackage(packageInfo, cacheDir)
 					if err != nil {
-						fmt.Println("Error downloading package:", err)
-						return
+						log.Fatalf("Error downloading package: %v", err)
 					}
 				}
 
@@ -101,7 +103,7 @@ func Install(args ...string) {
 				// Copy the package from cache to the dependencies directory
 				err = utils.CopyDir(cacheDir, depPackageDir)
 				if err != nil {
-					fmt.Println("Error copying package:", err)
+					log.Fatalf("Error copying package: %v", err)
 				}
 
 				// Install dependencies
