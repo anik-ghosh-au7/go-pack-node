@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/anik-ghosh-au7/go-pack-node/utils"
 )
@@ -24,7 +25,8 @@ type PackageVersionInfo struct {
 	Dependencies map[string]string `json:"dependencies"` // Add this field
 }
 
-func Install(args ...string) {
+func Install(depDir string, args ...string) {
+	wg := &sync.WaitGroup{}
 	baseDir, _ := os.Getwd() // Get the current working directory
 
 	if len(args) == 0 {
@@ -32,40 +34,60 @@ func Install(args ...string) {
 		// ... (implementation omitted for brevity) ...
 	} else {
 		for _, arg := range args {
-			packageAndVersion := strings.Split(arg, "@")
-			packageName := packageAndVersion[0]
-			packageVersion := "latest"
-			if len(packageAndVersion) > 1 {
-				packageVersion = packageAndVersion[1]
-			}
-
-			// Fetch package info from npm registry
-			packageInfo, err := FetchPackageInfo(packageName, packageVersion)
-			if err != nil {
-				fmt.Println("Error fetching package info:", err)
-				continue
-			}
-
-			// Check if the version exists in the cache
-			cacheDir := filepath.Join(baseDir, ".cache", packageName, packageInfo.Version)
-			if !utils.DirExists(cacheDir) {
-				// If not, download it and save it in the cache
-				err := DownloadPackage(packageInfo, cacheDir)
-				if err != nil {
-					fmt.Println("Error downloading package:", err)
-					continue
+			wg.Add(1)
+			go func(arg string) { // Start a goroutine
+				defer wg.Done() // Decrement the count when the goroutine completes
+				packageAndVersion := strings.Split(arg, "@")
+				packageName := packageAndVersion[0]
+				packageVersion := "latest"
+				if len(packageAndVersion) > 1 {
+					packageVersion = packageAndVersion[1]
 				}
-			}
 
-			// Update dependencies.json and dependencies-lock.json
-			// ... (implementation omitted for brevity) ...
+				// Fetch package info from npm registry
+				packageInfo, err := FetchPackageInfo(packageName, packageVersion)
+				if err != nil {
+					fmt.Println("Error fetching package info:", err)
+				}
 
-			// Install dependencies
-			for dep := range packageInfo.Dependencies {
-				Install(dep)
-			}
+				// Check if the version exists in the cache
+				cacheDir := filepath.Join(baseDir, ".cache", packageName, packageInfo.Version)
+				if !utils.DirExists(cacheDir) {
+					// If not, download it and save it in the cache
+					err := DownloadPackage(packageInfo, cacheDir)
+					if err != nil {
+						fmt.Println("Error downloading package:", err)
+					}
+				}
+
+				// Update dependencies.json and dependencies-lock.json
+				// ... (implementation omitted for brevity) ...
+
+				// Check if the package folder exists in the dependencies directory
+				depPackageDir := filepath.Join(depDir, packageName)
+				if utils.DirExists(depPackageDir) {
+					// If it does, delete the folder
+					os.RemoveAll(depPackageDir)
+				}
+
+				// Copy the package from cache to the dependencies directory
+				err = utils.CopyDir(cacheDir, depPackageDir)
+				if err != nil {
+					fmt.Println("Error copying package:", err)
+				}
+
+				// Install dependencies
+				for dep := range packageInfo.Dependencies {
+					wg.Add(1)
+					go func(dep string) {
+						defer wg.Done()
+						Install(depDir, dep)
+					}(dep)
+				}
+			}(arg)
 		}
 	}
+	wg.Wait()
 }
 
 func FetchPackageInfo(packageName string, version string) (*PackageVersionInfo, error) {
