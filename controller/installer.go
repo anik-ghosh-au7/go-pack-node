@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -106,12 +108,56 @@ func DownloadPackage(packageInfo *PackageVersionInfo, destination string) error 
 		return fmt.Errorf("failed to download package: %s", resp.Status)
 	}
 
-	out, err := os.Create(destination)
+	// Create directory instead of a file
+	err = os.MkdirAll(destination, os.ModePerm)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
 
-	_, err = io.Copy(out, resp.Body)
-	return err
+	// Create a new gzip reader
+	gzr, err := gzip.NewReader(resp.Body)
+	if err != nil {
+		return err
+	}
+	defer gzr.Close()
+
+	// Create a new tar reader
+	tr := tar.NewReader(gzr)
+
+	// Iterate through the files in the tarball
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break // End of archive
+		}
+		if err != nil {
+			return err
+		}
+
+		// Create the directories in the path
+		if hdr.Typeflag == tar.TypeDir {
+			if err := os.MkdirAll(filepath.Join(destination, hdr.Name), 0755); err != nil {
+				return err
+			}
+		} else {
+			// Create the directory path
+			dir := filepath.Join(destination, filepath.Dir(hdr.Name))
+			err := os.MkdirAll(dir, 0755)
+			if err != nil {
+				return err
+			}
+
+			// Create the file
+			outFile, err := os.Create(filepath.Join(destination, hdr.Name))
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(outFile, tr); err != nil {
+				return err
+			}
+			outFile.Close()
+		}
+	}
+
+	return nil
 }
