@@ -113,7 +113,7 @@ func Install(isRoot bool, args ...string) {
 				// Copy the package from cache to the dependencies directory
 				err = utils.CopyDir(cacheDir, depPackageDir)
 				if err != nil {
-					log.Fatalf("Error copying package: %v", err)
+					fmt.Printf("Error copying package: %s\n", err)
 				}
 
 				// Install dependencies
