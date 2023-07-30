@@ -19,6 +19,7 @@ import (
 )
 
 var depsMutex = &sync.Mutex{}
+var fileMutex = &sync.Mutex{}
 var wg = &sync.WaitGroup{}
 
 func Install(isRoot bool, args ...string) {
@@ -106,7 +107,9 @@ func Install(isRoot bool, args ...string) {
 				depsMutex.Unlock()
 
 				// Write the updated dependencies back to the files
+				fileMutex.Lock()
 				utils.WriteDepFiles(depFile, lockFile, deps, lockDeps)
+				fileMutex.Unlock()
 
 				depPackageDir := filepath.Join(depDir, packageName)
 				if utils.DirExists(depPackageDir) {
