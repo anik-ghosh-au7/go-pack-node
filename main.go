@@ -28,32 +28,37 @@ func main() {
 		dir, _ = os.Getwd()
 	}
 
+	var err error
 	switch command {
 	case "init":
 		var yFlag bool
 		if len(os.Args) > 3 && os.Args[len(os.Args)-1] == "-y" {
 			yFlag = true
 		}
-		controller.Initialize(yFlag, dir)
+		err = controller.Initialize(yFlag, dir)
 	case "install":
 		var packages []string
 		if len(os.Args) > 2 {
 			packages = os.Args[2:]
 		}
-		controller.Install(true, packages...)
+		err = controller.Install(true, packages...)
 	case "start":
 		if len(os.Args) > 2 {
 			log.Fatalf("Error: Invalid 'start' command")
 		}
 		script := os.Args[1]
-		controller.Run(script)
+		err = controller.Run(script)
 	case "run":
 		if len(os.Args) < 3 {
 			log.Fatalf("Error: Not enough arguments provided for 'run' command")
 		}
 		script := os.Args[2]
-		controller.Run(script)
+		err = controller.Run(script)
 	default:
 		log.Fatalf("Error: Invalid command")
+	}
+
+	if err != nil {
+		log.Fatalf("Error: %v", err)
 	}
 }

@@ -22,56 +22,49 @@ var depsMutex = &sync.Mutex{}
 var fileMutex = &sync.Mutex{}
 var wg = &sync.WaitGroup{}
 
-func Install(isRoot bool, args ...string) {
-	baseDir, _ := os.Getwd() // Get the current working directory
+func Install(isRoot bool, args ...string) error {
+	baseDir, _ := os.Getwd()
 	cacheDir := filepath.Join(baseDir, ".cache")
 	depDir := filepath.Join(baseDir, "node_modules")
 	depFile := filepath.Join(baseDir, "dependencies.json")
 	lockFile := filepath.Join(baseDir, "dependencies-lock.json")
 
-	// Check if the dependencies.json file exists
 	if _, err := os.Stat(depFile); os.IsNotExist(err) {
-		log.Fatalf("No dependencies.json file found in project root. Please initialize the project first")
+		return fmt.Errorf("no dependencies.json file found in project root. please initialize the project first")
 	}
 
-	// If the cache, dependencies directories or the json files don't exist, create them
 	for _, dir := range []string{cacheDir, depDir, lockFile} {
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
 			if strings.HasSuffix(dir, ".json") {
-				// If it's a json file, create the file
 				_, err := os.Create(dir)
 				if err != nil {
-					log.Fatalf("Error creating file: %v", err)
+					return fmt.Errorf("error creating file: %v", err)
 				}
 			} else {
-				// Else create the directory
 				err := os.MkdirAll(dir, os.ModePerm)
 				if err != nil {
-					log.Fatalf("Error creating directory: %v", err)
+					return fmt.Errorf("error creating directory: %v", err)
 				}
 			}
 		}
 	}
 
-	// Read the existing dependencies.json and dependencies-lock.json files
 	deps, lockDeps, err := utils.ReadDepFiles(depFile, lockFile)
 
 	if err != nil {
-		log.Fatalf("Error reading dependency files: %v", err)
+		return fmt.Errorf("error reading dependency files: %v", err)
 	}
 
 	if len(args) == 0 {
-		// If no args are provided, install all dependencies from dependencies.json
 		depsToInstall := make([]string, 0, len(deps.Dependencies))
 		for dep, version := range deps.Dependencies {
 			depsToInstall = append(depsToInstall, fmt.Sprintf("%s@%s", dep, version))
 		}
-		Install(true, depsToInstall...)
-		return
+		return Install(true, depsToInstall...)
 	} else {
 		for _, arg := range args {
 			wg.Add(1)
-			go func(arg string) { // Start a goroutine
+			go func(arg string) {
 				defer wg.Done()
 				packageAndVersion := strings.Split(arg, "@")
 				packageName := packageAndVersion[0]
@@ -80,23 +73,21 @@ func Install(isRoot bool, args ...string) {
 					packageVersion = packageAndVersion[1]
 				}
 
-				// Fetch package info from npm registry
 				packageInfo, err := FetchPackageInfo(packageName, packageVersion)
 				if err != nil {
-					log.Fatalf("Error fetching package info: %v", err)
+					log.Printf("error fetching package info: %v", err)
+					return
 				}
 
-				// Check if the version exists in the cache
 				cacheDir := filepath.Join(baseDir, ".cache", packageName, packageInfo.Version)
 				if !utils.DirExists(cacheDir) {
-					// If not, download it and save it in the cache
 					err := DownloadPackage(packageInfo, cacheDir)
 					if err != nil {
-						log.Fatalf("Error downloading package: %v", err)
+						log.Printf("error downloading package: %v", err)
+						return
 					}
 				}
 
-				// Update dependencies.json and dependencies-lock.json
 				depsMutex.Lock()
 				if isRoot {
 					deps.Dependencies[packageName] = packageInfo.Version
@@ -106,36 +97,34 @@ func Install(isRoot bool, args ...string) {
 				}
 				depsMutex.Unlock()
 
-				// Write the updated dependencies back to the files
 				fileMutex.Lock()
 				utils.WriteDepFiles(depFile, lockFile, deps, lockDeps)
 				fileMutex.Unlock()
 
 				depPackageDir := filepath.Join(depDir, packageName)
 				if utils.DirExists(depPackageDir) {
-					// If it does, delete the folder
 					os.RemoveAll(depPackageDir)
 				}
 
-				// Copy the package from cache to the dependencies directory
 				err = utils.CopyDir(cacheDir, depPackageDir)
 				if err != nil {
-					fmt.Printf("Error copying package: %s\n", err)
+					log.Printf("error copying package: %s", err)
 					return
 				}
 
-				// Install dependencies
 				for dep := range packageInfo.Dependencies {
 					wg.Add(1)
 					go func(dep string) {
 						defer wg.Done()
-						Install(false, dep)
+						_ = Install(false, dep)
 					}(dep)
 				}
 			}(arg)
 		}
 	}
 	wg.Wait()
+
+	return nil
 }
 
 func FetchPackageInfo(packageName string, version string) (*schema.PackageVersionInfo, error) {

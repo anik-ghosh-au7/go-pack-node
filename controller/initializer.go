@@ -12,7 +12,7 @@ import (
 	"github.com/anik-ghosh-au7/go-pack-node/utils"
 )
 
-func Initialize(yFlag bool, dir string) {
+func Initialize(yFlag bool, dir string) error {
 	cacheDir := filepath.Join(dir, ".cache")
 	depFile := filepath.Join(dir, "dependencies.json")
 	lockFile := filepath.Join(dir, "dependencies-lock.json")
@@ -52,11 +52,19 @@ func Initialize(yFlag bool, dir string) {
 	}
 
 	data, err := json.MarshalIndent(dep, "", "  ")
-	utils.CheckError(err)
+	if err != nil {
+		return err
+	}
 	err = os.WriteFile(depFile, data, 0644)
-	utils.CheckError(err)
+	if err != nil {
+		return err
+	}
 
 	// Update dependencies-lock.json
 	err = os.WriteFile(lockFile, data, 0644)
-	utils.CheckError(err)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

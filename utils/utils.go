@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -19,24 +18,20 @@ func ToSnakeCase(str string) string {
 	return strings.ToLower(matchAllCap.ReplaceAllString(str, "${1}_${2}"))
 }
 
-func CheckOrCreateDir(path string) {
+func CheckOrCreateDir(path string) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		err = os.MkdirAll(path, 0755)
-		CheckError(err)
+		return err
 	}
+	return nil
 }
 
-func CheckOrCreateFile(path string) {
+func CheckOrCreateFile(path string) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		_, err = os.Create(path)
-		CheckError(err)
+		return err
 	}
-}
-
-func CheckError(err error) {
-	if err != nil {
-		log.Fatalf("Error: %s", err)
-	}
+	return nil
 }
 
 func Contains(slice []string, item string) bool {
@@ -65,7 +60,6 @@ func CopyDir(src string, dst string) error {
 		return err
 	}
 
-	// If the destination directory exists, remove it
 	if err == nil {
 		os.RemoveAll(dst)
 	}
@@ -90,6 +84,10 @@ func CopyDir(src string, dst string) error {
 				return err
 			}
 		} else {
+			if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
+				return err
+			}
+
 			err = CopyFile(srcPath, dstPath)
 			if err != nil {
 				return err
@@ -101,7 +99,6 @@ func CopyDir(src string, dst string) error {
 }
 
 func CopyFile(src string, dst string) error {
-	// Check if source file exists
 	_, err := os.Stat(src)
 	if os.IsNotExist(err) {
 		return fmt.Errorf("source file does not exist: %s", src)
@@ -109,27 +106,23 @@ func CopyFile(src string, dst string) error {
 		return fmt.Errorf("error accessing source file: %s", err)
 	}
 
-	// Try to open source file
 	in, err := os.Open(src)
 	if err != nil {
 		return fmt.Errorf("error opening source file: %s", err)
 	}
 	defer in.Close()
 
-	// Try to create destination file
 	out, err := os.Create(dst)
 	if err != nil {
 		return fmt.Errorf("error creating destination file: %s", err)
 	}
 	defer out.Close()
 
-	// Try to copy source to destination
 	_, err = io.Copy(out, in)
 	if err != nil {
 		return fmt.Errorf("error copying file: %s", err)
 	}
 
-	// Try to close the destination file
 	err = out.Close()
 	if err != nil {
 		return fmt.Errorf("error closing destination file: %s", err)
@@ -139,11 +132,9 @@ func CopyFile(src string, dst string) error {
 }
 
 func ReadDepFiles(depFile string, lockFile string) (*schema.Dependency, *schema.Dependency, error) {
-	// Initialize empty Dependency and DepLock objects
 	dep := &schema.Dependency{}
 	lock := &schema.Dependency{}
 
-	// Read the dependencies.json file
 	file, err := os.ReadFile(depFile)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error reading dependencies file: %s", err)
@@ -156,12 +147,10 @@ func ReadDepFiles(depFile string, lockFile string) (*schema.Dependency, *schema.
 		return nil, nil, fmt.Errorf("error unmarshalling dependencies: %s", err)
 	}
 
-	// Initialize Dependencies map if it is nil
 	if dep.Dependencies == nil {
 		dep.Dependencies = make(map[string]string)
 	}
 
-	// Read the dependencies-lock.json file
 	file, err = os.ReadFile(lockFile)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error reading lock file: %s", err)
@@ -174,7 +163,6 @@ func ReadDepFiles(depFile string, lockFile string) (*schema.Dependency, *schema.
 		return nil, nil, fmt.Errorf("error unmarshalling lock: %s", err)
 	}
 
-	// Initialize Dependencies map if it is nil
 	if lock.Dependencies == nil {
 		lock.Dependencies = make(map[string]string)
 	}
@@ -182,28 +170,26 @@ func ReadDepFiles(depFile string, lockFile string) (*schema.Dependency, *schema.
 	return dep, lock, nil
 }
 
-// WriteDepFiles writes the given Dependency and DepLock objects to
-// dependencies.json and dependencies-lock.json respectively.
-func WriteDepFiles(depFile string, lockFile string, dep *schema.Dependency, lock *schema.Dependency) {
-	// Marshal dependencies.json
+func WriteDepFiles(depFile string, lockFile string, dep *schema.Dependency, lock *schema.Dependency) error {
 	depData, err := json.MarshalIndent(dep, "", "  ")
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
 	err = os.WriteFile(depFile, depData, 0644)
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
 
-	// Marshal dependencies-lock.json
 	lockData, err := json.MarshalIndent(lock, "", "  ")
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
 	err = os.WriteFile(lockFile, lockData, 0644)
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
+
+	return nil
 }
 
 func DirExists(path string) bool {
