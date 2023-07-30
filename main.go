@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	allowedCommands := []string{"init", "install", "run"}
+	allowedCommands := []string{"init", "install", "start", "run"}
 
 	if len(os.Args) < 2 {
 		log.Fatalf("Error: Not enough arguments provided")
@@ -47,6 +47,12 @@ func main() {
 			packages = os.Args[2:]
 		}
 		controller.Install(packages...)
+	case "start":
+		if len(os.Args) > 2 {
+			log.Fatalf("Error: Invalid 'start' command")
+		}
+		script := os.Args[1]
+		controller.Run(script)
 	case "run":
 		if len(os.Args) < 3 {
 			log.Fatalf("Error: Not enough arguments provided for 'run' command")
