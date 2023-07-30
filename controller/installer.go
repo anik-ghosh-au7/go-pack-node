@@ -19,9 +19,9 @@ import (
 )
 
 var depsMutex = &sync.Mutex{}
+var wg = &sync.WaitGroup{}
 
 func Install(isRoot bool, args ...string) {
-	wg := &sync.WaitGroup{}
 	baseDir, _ := os.Getwd() // Get the current working directory
 	cacheDir := filepath.Join(baseDir, ".cache")
 	depDir := filepath.Join(baseDir, "node_modules")
@@ -101,7 +101,7 @@ func Install(isRoot bool, args ...string) {
 					deps.Dependencies[packageName] = packageInfo.Version
 					lockDeps.Dependencies[packageName] = packageInfo.Version
 				} else {
-					// lockDeps.Dependencies[packageName] = packageInfo.Version
+					lockDeps.Dependencies[packageName] = packageInfo.Version
 				}
 				depsMutex.Unlock()
 
