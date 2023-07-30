@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,6 +17,8 @@ import (
 	"github.com/anik-ghosh-au7/go-pack-node/schema"
 	"github.com/anik-ghosh-au7/go-pack-node/utils"
 )
+
+var depsMutex = &sync.Mutex{}
 
 func Install(args ...string) {
 	wg := &sync.WaitGroup{}
@@ -89,7 +92,9 @@ func Install(args ...string) {
 				}
 
 				// Update dependencies.json and dependencies-lock.json
+				depsMutex.Lock()
 				deps.Dependencies[packageName] = packageInfo.Version
+				depsMutex.Unlock()
 
 				// Write the updated dependencies back to the files
 				utils.WriteDepFiles(depFile, lockFile, deps, lockDeps)
@@ -121,9 +126,17 @@ func Install(args ...string) {
 }
 
 func FetchPackageInfo(packageName string, version string) (*schema.PackageVersionInfo, error) {
-	resp, err := http.Get(fmt.Sprintf("https://registry.npmjs.org/%s", packageName))
-	if err != nil {
-		return nil, err
+	// Properly encode the package name in the URL
+	encodedPackageName := url.PathEscape(packageName)
+
+	// First, try to fetch the latest version of the package
+	resp, err := http.Get(fmt.Sprintf("https://registry.npmjs.org/%s", encodedPackageName))
+	if err != nil || resp.StatusCode != 200 {
+		resp, err = http.Get(fmt.Sprintf("https://registry.npmjs.org/%s/%s", encodedPackageName, version))
+		// If that fails, try to fetch the specific version of the package
+		if err != nil {
+			return nil, err
+		}
 	}
 	defer resp.Body.Close()
 
