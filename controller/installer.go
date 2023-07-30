@@ -121,7 +121,7 @@ func Install(args ...string) {
 }
 
 func FetchPackageInfo(packageName string, version string) (*schema.PackageVersionInfo, error) {
-	resp, err := http.Get(fmt.Sprintf("https://registry.npmjs.org/%s/%s", packageName, version))
+	resp, err := http.Get(fmt.Sprintf("https://registry.npmjs.org/%s", packageName))
 	if err != nil {
 		return nil, err
 	}
@@ -136,13 +136,31 @@ func FetchPackageInfo(packageName string, version string) (*schema.PackageVersio
 		return nil, err
 	}
 
-	var packageInfo schema.PackageVersionInfo
+	var packageInfo schema.PackageInfo
 	err = json.Unmarshal(body, &packageInfo)
 	if err != nil {
 		return nil, err
 	}
 
-	return &packageInfo, nil
+	// If the user didn't provide a specific version, use the latest version
+	if version == "latest" || version == "" {
+		version = packageInfo.DistTags.Latest
+	}
+
+	// Extract the version-specific information
+	versionInfo, exists := packageInfo.Versions[version]
+	if !exists {
+		return nil, fmt.Errorf("version %s not found for package %s", version, packageName)
+	}
+
+	// Create a new PackageVersionInfo object and populate it with the necessary information
+	pkgVersionInfo := &schema.PackageVersionInfo{
+		Version:      version,
+		Dist:         versionInfo.Dist,
+		Dependencies: versionInfo.Dependencies,
+	}
+
+	return pkgVersionInfo, nil
 }
 
 func DownloadPackage(packageInfo *schema.PackageVersionInfo, destination string) error {
