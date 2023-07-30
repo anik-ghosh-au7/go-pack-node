@@ -40,7 +40,7 @@ func main() {
 		if len(os.Args) > 2 {
 			packages = os.Args[2:]
 		}
-		controller.Install(packages...)
+		controller.Install(true, packages...)
 	case "start":
 		if len(os.Args) > 2 {
 			log.Fatalf("Error: Invalid 'start' command")

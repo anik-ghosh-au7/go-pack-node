@@ -110,8 +110,10 @@ func CopyDir(src string, dst string) error {
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
+
+	// If the destination directory exists, remove it
 	if err == nil {
-		return fmt.Errorf("destination already exists")
+		os.RemoveAll(dst)
 	}
 
 	err = os.MkdirAll(dst, si.Mode())
@@ -176,9 +178,19 @@ func ReadDepFiles(depFile string, lockFile string) (*schema.Dependency, *schema.
 	file, _ := os.ReadFile(depFile)
 	json.Unmarshal(file, dep)
 
+	// Initialize Dependencies map if it is nil
+	if dep.Dependencies == nil {
+		dep.Dependencies = make(map[string]string)
+	}
+
 	// Read the dependencies-lock.json file
 	file, _ = os.ReadFile(lockFile)
 	json.Unmarshal(file, lock)
+
+	// Initialize Dependencies map if it is nil
+	if lock.Dependencies == nil {
+		lock.Dependencies = make(map[string]string)
+	}
 
 	return dep, lock
 }

@@ -20,7 +20,7 @@ import (
 
 var depsMutex = &sync.Mutex{}
 
-func Install(args ...string) {
+func Install(isRoot bool, args ...string) {
 	wg := &sync.WaitGroup{}
 	baseDir, _ := os.Getwd() // Get the current working directory
 	cacheDir := filepath.Join(baseDir, ".cache")
@@ -61,7 +61,7 @@ func Install(args ...string) {
 		for dep, version := range deps.Dependencies {
 			depsToInstall = append(depsToInstall, fmt.Sprintf("%s@%s", dep, version))
 		}
-		Install(depsToInstall...)
+		Install(true, depsToInstall...)
 		return
 	} else {
 		for _, arg := range args {
@@ -93,7 +93,12 @@ func Install(args ...string) {
 
 				// Update dependencies.json and dependencies-lock.json
 				depsMutex.Lock()
-				deps.Dependencies[packageName] = packageInfo.Version
+				if isRoot {
+					deps.Dependencies[packageName] = packageInfo.Version
+					// lockDeps.Dependencies[packageName] = packageInfo.Version
+				} else {
+					// lockDeps.Dependencies[packageName] = packageInfo.Version
+				}
 				depsMutex.Unlock()
 
 				// Write the updated dependencies back to the files
@@ -116,7 +121,7 @@ func Install(args ...string) {
 					wg.Add(1)
 					go func(dep string) {
 						defer wg.Done()
-						Install(depDir, dep)
+						Install(false, dep)
 					}(dep)
 				}
 			}(arg)
