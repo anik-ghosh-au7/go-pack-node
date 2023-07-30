@@ -156,7 +156,7 @@ func DownloadPackage(packageInfo *schema.PackageVersionInfo, destination string)
 		return fmt.Errorf("failed to download package: %s", resp.Status)
 	}
 
-	// Create directory instead of a file
+	// Create directory
 	err = os.MkdirAll(destination, os.ModePerm)
 	if err != nil {
 		return err
