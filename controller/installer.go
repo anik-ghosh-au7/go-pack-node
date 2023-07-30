@@ -121,6 +121,7 @@ func Install(isRoot bool, args ...string) {
 				err = utils.CopyDir(cacheDir, depPackageDir)
 				if err != nil {
 					fmt.Printf("Error copying package: %s\n", err)
+					return
 				}
 
 				// Install dependencies
