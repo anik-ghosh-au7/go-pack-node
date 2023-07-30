@@ -8,10 +8,12 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/anik-ghosh-au7/go-pack-node/schema"
 )
 
+var fileMutex = &sync.Mutex{}
 var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
 
 func ToSnakeCase(str string) string {
@@ -190,6 +192,9 @@ func WriteDepFiles(depFile string, lockFile string, dep *schema.Dependency, lock
 		fmt.Println(err)
 	}
 
+	fileMutex.Lock()
+	defer fileMutex.Unlock()
+
 	// Marshal dependencies-lock.json
 	lockData, err := json.MarshalIndent(lock, "", "  ")
 	if err != nil {
@@ -202,8 +207,9 @@ func WriteDepFiles(depFile string, lockFile string, dep *schema.Dependency, lock
 }
 
 func DirExists(path string) bool {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
 		return false
 	}
-	return true
+	return info.IsDir()
 }

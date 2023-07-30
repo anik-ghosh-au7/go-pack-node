@@ -73,6 +73,7 @@ func Install(isRoot bool, args ...string) error {
 					packageVersion = packageAndVersion[1]
 				}
 
+				parentPackage := packageName
 				packageInfo, err := FetchPackageInfo(packageName, packageVersion)
 				if err != nil {
 					log.Printf("error fetching package info: %v", err)
@@ -91,16 +92,19 @@ func Install(isRoot bool, args ...string) error {
 				depsMutex.Lock()
 				if isRoot {
 					deps.Dependencies[packageName] = packageInfo.Version
-					lockDeps.Dependencies[packageName] = &schema.LockDependency{Version: packageInfo.Version, ParentPackage: ""}
+					lockDeps.Dependencies[packageName] = &schema.LockDependency{
+						Version:       packageInfo.Version,
+						ParentPackage: packageName,
+					}
 				} else {
-					if lockDep, exists := lockDeps.Dependencies[packageName]; exists {
-						lockDep.ParentPackage = arg
-					} else {
-						lockDeps.Dependencies[packageName] = &schema.LockDependency{Version: packageInfo.Version, ParentPackage: arg}
+					lockDeps.Dependencies[packageName] = &schema.LockDependency{
+						Version:       packageInfo.Version,
+						ParentPackage: parentPackage,
 					}
 				}
 				depsMutex.Unlock()
 
+				// Write the updated dependencies back to the files
 				fileMutex.Lock()
 				utils.WriteDepFiles(depFile, lockFile, deps, lockDeps)
 				fileMutex.Unlock()
