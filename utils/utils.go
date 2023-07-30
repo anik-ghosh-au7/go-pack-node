@@ -112,6 +112,15 @@ func CopyFile(src string, dst string) error {
 	}
 	defer in.Close()
 
+	// ensure that the parent directory exists
+	parentDir := filepath.Dir(dst)
+	if _, err := os.Stat(parentDir); os.IsNotExist(err) {
+		err := os.MkdirAll(parentDir, 0755)
+		if err != nil {
+			return fmt.Errorf("error creating parent directory: %s", err)
+		}
+	}
+
 	out, err := os.Create(dst)
 	if err != nil {
 		return fmt.Errorf("error creating destination file: %s", err)
@@ -131,9 +140,9 @@ func CopyFile(src string, dst string) error {
 	return nil
 }
 
-func ReadDepFiles(depFile string, lockFile string) (*schema.Dependency, *schema.Dependency, error) {
+func ReadDepFiles(depFile string, lockFile string) (*schema.Dependency, *schema.DependencyLock, error) {
 	dep := &schema.Dependency{}
-	lock := &schema.Dependency{}
+	lock := &schema.DependencyLock{}
 
 	file, err := os.ReadFile(depFile)
 	if err != nil {
@@ -164,32 +173,32 @@ func ReadDepFiles(depFile string, lockFile string) (*schema.Dependency, *schema.
 	}
 
 	if lock.Dependencies == nil {
-		lock.Dependencies = make(map[string]string)
+		lock.Dependencies = make(map[string]*schema.LockDependency)
 	}
 
 	return dep, lock, nil
 }
 
-func WriteDepFiles(depFile string, lockFile string, dep *schema.Dependency, lock *schema.Dependency) error {
+func WriteDepFiles(depFile string, lockFile string, dep *schema.Dependency, lock *schema.DependencyLock) {
+	// Marshal dependencies.json
 	depData, err := json.MarshalIndent(dep, "", "  ")
 	if err != nil {
-		return err
+		fmt.Println(err)
 	}
 	err = os.WriteFile(depFile, depData, 0644)
 	if err != nil {
-		return err
+		fmt.Println(err)
 	}
 
+	// Marshal dependencies-lock.json
 	lockData, err := json.MarshalIndent(lock, "", "  ")
 	if err != nil {
-		return err
+		fmt.Println(err)
 	}
 	err = os.WriteFile(lockFile, lockData, 0644)
 	if err != nil {
-		return err
+		fmt.Println(err)
 	}
-
-	return nil
 }
 
 func DirExists(path string) bool {

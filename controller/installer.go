@@ -91,9 +91,13 @@ func Install(isRoot bool, args ...string) error {
 				depsMutex.Lock()
 				if isRoot {
 					deps.Dependencies[packageName] = packageInfo.Version
-					lockDeps.Dependencies[packageName] = packageInfo.Version
+					lockDeps.Dependencies[packageName] = &schema.LockDependency{Version: packageInfo.Version, ParentPackage: ""}
 				} else {
-					lockDeps.Dependencies[packageName] = packageInfo.Version
+					if lockDep, exists := lockDeps.Dependencies[packageName]; exists {
+						lockDep.ParentPackage = arg
+					} else {
+						lockDeps.Dependencies[packageName] = &schema.LockDependency{Version: packageInfo.Version, ParentPackage: arg}
+					}
 				}
 				depsMutex.Unlock()
 

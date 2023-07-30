@@ -60,8 +60,19 @@ func Initialize(yFlag bool, dir string) error {
 		return err
 	}
 
-	// Update dependencies-lock.json
-	err = os.WriteFile(lockFile, data, 0644)
+	// Initialize an empty DependencyLock struct
+	lock := schema.DependencyLock{
+		Dependencies: make(map[string]*schema.LockDependency),
+	}
+
+	// Marshal the lock struct to JSON
+	lockData, err := json.MarshalIndent(lock, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	// Write the JSON data to the dependencies-lock.json file
+	err = os.WriteFile(lockFile, lockData, 0644)
 	if err != nil {
 		return err
 	}

@@ -9,3 +9,12 @@ type Dependency struct {
 	Dependencies    map[string]string `json:"dependencies"`
 	DevDependencies map[string]string `json:"devDependencies"`
 }
+
+type LockDependency struct {
+	Version       string `json:"version"`
+	ParentPackage string `json:"parentPackage"`
+}
+
+type DependencyLock struct {
+	Dependencies map[string]*LockDependency `json:"dependencies"`
+}
