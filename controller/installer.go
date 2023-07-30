@@ -53,7 +53,11 @@ func Install(isRoot bool, args ...string) {
 	}
 
 	// Read the existing dependencies.json and dependencies-lock.json files
-	deps, lockDeps := utils.ReadDepFiles(depFile, lockFile)
+	deps, lockDeps, err := utils.ReadDepFiles(depFile, lockFile)
+
+	if err != nil {
+		log.Fatalf("Error reading dependency files: %v", err)
+	}
 
 	if len(args) == 0 {
 		// If no args are provided, install all dependencies from dependencies.json
@@ -95,7 +99,7 @@ func Install(isRoot bool, args ...string) {
 				depsMutex.Lock()
 				if isRoot {
 					deps.Dependencies[packageName] = packageInfo.Version
-					// lockDeps.Dependencies[packageName] = packageInfo.Version
+					lockDeps.Dependencies[packageName] = packageInfo.Version
 				} else {
 					// lockDeps.Dependencies[packageName] = packageInfo.Version
 				}
