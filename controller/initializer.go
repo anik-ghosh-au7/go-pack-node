@@ -12,7 +12,12 @@ import (
 	"github.com/anik-ghosh-au7/go-pack-node/utils"
 )
 
-func Initialize(yFlag bool, cacheDir string, depFile string, lockFile string, depDir string, dir string) {
+func Initialize(yFlag bool, dir string) {
+	cacheDir := filepath.Join(dir, ".cache")
+	depFile := filepath.Join(dir, "dependencies.json")
+	lockFile := filepath.Join(dir, "dependencies-lock.json")
+	depDir := filepath.Join(dir, "node_modules")
+
 	utils.CheckOrCreateDir(cacheDir)
 	utils.CheckOrCreateFile(depFile)
 	utils.CheckOrCreateFile(lockFile)

@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"os"
-	"path/filepath"
 
 	"github.com/anik-ghosh-au7/go-pack-node/controller"
 	"github.com/anik-ghosh-au7/go-pack-node/utils"
@@ -29,18 +28,13 @@ func main() {
 		dir, _ = os.Getwd()
 	}
 
-	cacheDir := filepath.Join(dir, ".cache")
-	depFile := filepath.Join(dir, "dependencies.json")
-	lockFile := filepath.Join(dir, "dependencies-lock.json")
-	depDir := filepath.Join(dir, "node_modules")
-
 	switch command {
 	case "init":
 		var yFlag bool
 		if len(os.Args) > 3 && os.Args[len(os.Args)-1] == "-y" {
 			yFlag = true
 		}
-		controller.Initialize(yFlag, cacheDir, depFile, lockFile, depDir, dir)
+		controller.Initialize(yFlag, dir)
 	case "install":
 		var packages []string
 		if len(os.Args) > 2 {
