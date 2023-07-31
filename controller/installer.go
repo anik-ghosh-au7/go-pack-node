@@ -21,6 +21,8 @@ import (
 var depsMutex = &sync.Mutex{}
 var fileMutex = &sync.Mutex{}
 var copyMutex = &sync.Mutex{}
+var installedPackagesMutex = &sync.Mutex{}
+var installedPackages = make(map[string]bool)
 var wg = &sync.WaitGroup{}
 
 func Install(isRoot bool, args ...string) error {
@@ -74,6 +76,14 @@ func Install(isRoot bool, args ...string) error {
 					packageVersion = packageAndVersion[1]
 				}
 
+				installedPackagesMutex.Lock()
+				if _, isInstalled := installedPackages[packageName]; isInstalled {
+					installedPackagesMutex.Unlock()
+					return
+				}
+				installedPackages[packageName] = true
+				installedPackagesMutex.Unlock()
+
 				parentPackage := packageName
 				packageInfo, err := FetchPackageInfo(packageName, packageVersion)
 				if err != nil {
@@ -96,16 +106,21 @@ func Install(isRoot bool, args ...string) error {
 					lockDeps.Dependencies[packageName] = &schema.LockDependency{
 						Version:       packageInfo.Version,
 						ParentPackage: packageName,
+						Resolved:      packageInfo.Dist.Tarball,
+						Dependencies:  packageInfo.Dependencies,
 					}
 				} else {
-					lockDeps.Dependencies[packageName] = &schema.LockDependency{
-						Version:       packageInfo.Version,
-						ParentPackage: parentPackage,
+					if _, ok := lockDeps.Dependencies[packageName]; !ok {
+						lockDeps.Dependencies[packageName] = &schema.LockDependency{
+							Version:       packageInfo.Version,
+							ParentPackage: parentPackage,
+							Resolved:      packageInfo.Dist.Tarball,
+							Dependencies:  packageInfo.Dependencies,
+						}
 					}
 				}
 				depsMutex.Unlock()
 
-				// Write the updated dependencies back to the files
 				fileMutex.Lock()
 				utils.WriteDepFiles(depFile, lockFile, deps, lockDeps)
 				fileMutex.Unlock()
@@ -115,9 +130,16 @@ func Install(isRoot bool, args ...string) error {
 					os.RemoveAll(depPackageDir)
 				}
 
-				copyMutex.Lock()
-				err = utils.CopyDir(cacheDir, depPackageDir)
-				copyMutex.Unlock()
+				log.Printf("Copying package %s@%s to node_modules...\n", packageName, packageInfo.Version)
+				wg.Add(1)
+				go func() {
+					copyMutex.Lock()
+					err := utils.CopyDir(cacheDir, depPackageDir, wg)
+					copyMutex.Unlock()
+					if err != nil {
+						log.Printf("error copying package: %s", err)
+					}
+				}()
 
 				if err != nil {
 					log.Printf("error copying package: %s", err)

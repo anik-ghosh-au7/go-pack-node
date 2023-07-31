@@ -11,8 +11,10 @@ type Dependency struct {
 }
 
 type LockDependency struct {
-	Version       string `json:"version"`
-	ParentPackage string `json:"parentPackage"`
+	Version       string            `json:"version"`
+	ParentPackage string            `json:"parentPackage"`
+	Resolved      string            `json:"resolved"`
+	Dependencies  map[string]string `json:"dependencies"`
 }
 
 type DependencyLock struct {
