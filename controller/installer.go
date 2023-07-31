@@ -20,6 +20,7 @@ import (
 
 var depsMutex = &sync.Mutex{}
 var fileMutex = &sync.Mutex{}
+var copyMutex = &sync.Mutex{}
 var wg = &sync.WaitGroup{}
 
 func Install(isRoot bool, args ...string) error {
@@ -114,7 +115,10 @@ func Install(isRoot bool, args ...string) error {
 					os.RemoveAll(depPackageDir)
 				}
 
+				copyMutex.Lock()
 				err = utils.CopyDir(cacheDir, depPackageDir)
+				copyMutex.Unlock()
+
 				if err != nil {
 					log.Printf("error copying package: %s", err)
 					return
