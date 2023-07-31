@@ -1,6 +1,6 @@
 # Go-Pack-Node
 
-Go-Pack-Node is a demonstration of a Node.js package manager, built in Go. It provides a lightweight and efficient way to manage Node.js dependencies. This project is intended to illustrate the functionalities of existing package managers like `npm`, `yarn`, `pnpm` etc.
+Go-Pack-Node is a demonstration of a Node.js package manager, built in Go. It provides a lightweight and efficient way to manage Node.js dependencies. This project is intended to illustrate the inner workings of existing package managers like `npm`, `yarn`, etc.
 
 ## Features
 
