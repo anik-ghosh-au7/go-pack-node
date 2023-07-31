@@ -84,7 +84,6 @@ func Install(isRoot bool, args ...string) error {
 				installedPackages[packageName] = true
 				installedPackagesMutex.Unlock()
 
-				parentPackage := packageName
 				packageInfo, err := FetchPackageInfo(packageName, packageVersion)
 				if err != nil {
 					log.Printf("error fetching package info: %v", err)
@@ -105,16 +104,16 @@ func Install(isRoot bool, args ...string) error {
 					deps.Dependencies[packageName] = packageInfo.Version
 					lockDeps.Dependencies[packageName] = &schema.LockDependency{
 						Version:       packageInfo.Version,
-						ParentPackage: packageName,
 						Resolved:      packageInfo.Dist.Tarball,
+						ParentPackage: packageName,
 						Dependencies:  packageInfo.Dependencies,
 					}
 				} else {
 					if _, ok := lockDeps.Dependencies[packageName]; !ok {
 						lockDeps.Dependencies[packageName] = &schema.LockDependency{
 							Version:       packageInfo.Version,
-							ParentPackage: parentPackage,
 							Resolved:      packageInfo.Dist.Tarball,
+							ParentPackage: packageName,
 							Dependencies:  packageInfo.Dependencies,
 						}
 					}
