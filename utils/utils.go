@@ -14,6 +14,7 @@ import (
 )
 
 var fileMutex = &sync.Mutex{}
+var copyFileMutex = &sync.Mutex{}
 var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
 
 func ToSnakeCase(str string) string {
@@ -45,109 +46,56 @@ func Contains(slice []string, item string) bool {
 	return false
 }
 
-func CopyDir(src string, dst string, wg *sync.WaitGroup) error {
-	defer wg.Done() // Make sure to mark this routine as done when it finishes
-
-	// Clean and check the source directory
+func CopyDir(src string, dst string) error {
 	src = filepath.Clean(src)
-	si, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-	if !si.IsDir() {
-		return fmt.Errorf("source is not a directory")
-	}
+	dst = filepath.Clean(dst)
 
-	// Check the destination directory
-	_, err = os.Stat(dst)
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	}
-
-	// Clean up the destination directory if it already exists
-	if err == nil {
-		os.RemoveAll(dst)
-	}
-
-	// Create the destination directory
-	err = os.MkdirAll(dst, si.Mode())
-	if err != nil {
-		return err
-	}
-
-	// Read entries in the source directory
-	entries, err := os.ReadDir(src)
-	if err != nil {
-		return err
-	}
-
-	for _, entry := range entries {
-		// Create source and destination paths
-		srcPath := filepath.Join(src, entry.Name())
-		dstPath := filepath.Join(dst, entry.Name())
-
-		// Check if the entry is a directory
-		if entry.IsDir() {
-			// Increment the WaitGroup counter
-			wg.Add(1)
-			// Recursively copy the sub-directory
-			go CopyDir(srcPath, dstPath, wg)
-		} else {
-			// Increment the WaitGroup counter
-			wg.Add(1)
-			// Copy the file
-			go CopyFile(srcPath, dstPath, wg)
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
 		}
-	}
-	return nil
+
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+
+		dstPath := filepath.Join(dst, rel)
+		if info.IsDir() {
+			return os.MkdirAll(dstPath, info.Mode())
+		}
+
+		copyFileMutex.Lock()
+		defer copyFileMutex.Unlock()
+
+		return CopyFile(path, dstPath)
+	})
 }
 
-func CopyFile(src string, dst string, wg *sync.WaitGroup) error {
-	defer wg.Done() // Mark this routine as done when it finishes
-
-	// Check and open the source file
-	_, err := os.Stat(src)
-	if os.IsNotExist(err) {
-		return fmt.Errorf("source file does not exist: %s", src)
-	} else if err != nil {
-		return fmt.Errorf("error accessing source file: %s", err)
-	}
-
-	in, err := os.Open(src)
+func CopyFile(srcFile string, dstFile string) (err error) {
+	in, err := os.Open(srcFile)
 	if err != nil {
-		return fmt.Errorf("error opening source file: %s", err)
+		return
 	}
 	defer in.Close()
 
-	// Check and create the parent directory of the destination file
-	parentDir := filepath.Dir(dst)
-	if _, err := os.Stat(parentDir); os.IsNotExist(err) {
-		err := os.MkdirAll(parentDir, 0755)
-		if err != nil {
-			return fmt.Errorf("error creating parent directory: %s", err)
+	out, err := os.Create(dstFile)
+	if err != nil {
+		return
+	}
+	defer func() {
+		cerr := out.Close()
+		if err == nil {
+			err = cerr
 		}
+	}()
+
+	if _, err = io.Copy(out, in); err != nil {
+		return
 	}
 
-	// Create the destination file
-	out, err := os.Create(dst)
-	if err != nil {
-		return fmt.Errorf("error creating destination file: %s", err)
-	}
-	defer out.Close()
-
-	// Copy the source file to the destination file
-	_, err = io.Copy(out, in)
-	if err != nil {
-		return fmt.Errorf("error copying file: %s", err)
-	}
-
-	// Close the destination file
-	err = out.Close()
-	if err != nil {
-		return fmt.Errorf("error closing destination file: %s", err)
-	}
-
-	return nil
+	err = out.Sync()
+	return
 }
 
 func ReadDepFiles(depFile string, lockFile string) (*schema.Dependency, *schema.DependencyLock, error) {

@@ -120,10 +120,6 @@ func Install(isRoot bool, args ...string) error {
 				}
 				depsMutex.Unlock()
 
-				fileMutex.Lock()
-				utils.WriteDepFiles(depFile, lockFile, deps, lockDeps)
-				fileMutex.Unlock()
-
 				depPackageDir := filepath.Join(depDir, packageName)
 				if utils.DirExists(depPackageDir) {
 					os.RemoveAll(depPackageDir)
@@ -132,8 +128,9 @@ func Install(isRoot bool, args ...string) error {
 				log.Printf("Copying package %s@%s to node_modules...\n", packageName, packageInfo.Version)
 				wg.Add(1)
 				go func() {
+					defer wg.Done()
 					copyMutex.Lock()
-					err := utils.CopyDir(cacheDir, depPackageDir, wg)
+					err := utils.CopyDir(cacheDir, depPackageDir)
 					copyMutex.Unlock()
 					if err != nil {
 						log.Printf("error copying package: %s", err)
@@ -157,18 +154,19 @@ func Install(isRoot bool, args ...string) error {
 	}
 	wg.Wait()
 
+	fileMutex.Lock()
+	utils.WriteDepFiles(depFile, lockFile, deps, lockDeps)
+	fileMutex.Unlock()
+
 	return nil
 }
 
 func FetchPackageInfo(packageName string, version string) (*schema.PackageVersionInfo, error) {
-	// Properly encode the package name in the URL
 	encodedPackageName := url.PathEscape(packageName)
 
-	// First, try to fetch the latest version of the package
 	resp, err := http.Get(fmt.Sprintf("https://registry.npmjs.org/%s", encodedPackageName))
 	if err != nil || resp.StatusCode != 200 {
 		resp, err = http.Get(fmt.Sprintf("https://registry.npmjs.org/%s/%s", encodedPackageName, version))
-		// If that fails, try to fetch the specific version of the package
 		if err != nil {
 			return nil, err
 		}
@@ -190,18 +188,15 @@ func FetchPackageInfo(packageName string, version string) (*schema.PackageVersio
 		return nil, err
 	}
 
-	// If the user didn't provide a specific version, use the latest version
 	if version == "latest" || version == "" {
 		version = packageInfo.DistTags.Latest
 	}
 
-	// Extract the version-specific information
 	versionInfo, exists := packageInfo.Versions[version]
 	if !exists {
 		return nil, fmt.Errorf("version %s not found for package %s", version, packageName)
 	}
 
-	// Create a new PackageVersionInfo object and populate it with the necessary information
 	pkgVersionInfo := &schema.PackageVersionInfo{
 		Version:      version,
 		Dist:         versionInfo.Dist,
@@ -222,46 +217,40 @@ func DownloadPackage(packageInfo *schema.PackageVersionInfo, destination string)
 		return fmt.Errorf("failed to download package: %s", resp.Status)
 	}
 
-	// Create directory
 	err = os.MkdirAll(destination, os.ModePerm)
 	if err != nil {
 		return err
 	}
 
-	// Create a new gzip reader
 	gzr, err := gzip.NewReader(resp.Body)
 	if err != nil {
 		return err
 	}
 	defer gzr.Close()
 
-	// Create a new tar reader
 	tr := tar.NewReader(gzr)
 
-	// Iterate through the files in the tarball
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
-			break // End of archive
+			break
 		}
 		if err != nil {
+			log.Printf("error reading tarball: %v", err)
 			return err
 		}
 
-		// Create the directories in the path
 		if hdr.Typeflag == tar.TypeDir {
 			if err := os.MkdirAll(filepath.Join(destination, strings.TrimPrefix(hdr.Name, "package/")), 0755); err != nil {
 				return err
 			}
 		} else {
-			// Create the directory path
 			dir := filepath.Join(destination, filepath.Dir(strings.TrimPrefix(hdr.Name, "package/")))
 			err := os.MkdirAll(dir, 0755)
 			if err != nil {
 				return err
 			}
 
-			// Create the file
 			outFile, err := os.Create(filepath.Join(destination, strings.TrimPrefix(hdr.Name, "package/")))
 			if err != nil {
 				return err
