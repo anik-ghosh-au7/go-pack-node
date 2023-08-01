@@ -18,6 +18,7 @@ import (
 	"github.com/anik-ghosh-au7/go-pack-node/utils"
 )
 
+var binMutex = &sync.Mutex{}
 var depsMutex = &sync.Mutex{}
 var fileMutex = &sync.Mutex{}
 var copyMutex = &sync.Mutex{}
@@ -92,7 +93,7 @@ func Install(isRoot bool, args ...string) error {
 
 				cacheDir := filepath.Join(baseDir, ".cache", packageName, packageInfo.Version)
 				if !utils.DirExists(cacheDir) {
-					err := DownloadPackage(packageInfo, cacheDir)
+					err := DownloadPackage(packageInfo, cacheDir, baseDir)
 					if err != nil {
 						log.Printf("error downloading package: %v", err)
 						return
@@ -146,8 +147,21 @@ func Install(isRoot bool, args ...string) error {
 	wg.Wait()
 
 	fileMutex.Lock()
+	defer fileMutex.Unlock()
 	utils.WriteDepFiles(depFile, lockFile, deps, lockDeps)
-	fileMutex.Unlock()
+
+	packageLock := schema.PackageLock{
+		Dependencies: lockDeps.Dependencies,
+	}
+	packageLockFile, err := os.Create(filepath.Join(baseDir, "node_modules", ".package-lock.json"))
+	if err != nil {
+		return err
+	}
+	defer packageLockFile.Close()
+
+	if err := json.NewEncoder(packageLockFile).Encode(&packageLock); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -197,7 +211,7 @@ func FetchPackageInfo(packageName string, version string) (*schema.PackageVersio
 	return pkgVersionInfo, nil
 }
 
-func DownloadPackage(packageInfo *schema.PackageVersionInfo, destination string) error {
+func DownloadPackage(packageInfo *schema.PackageVersionInfo, destination string, baseDir string) error {
 	resp, err := http.Get(packageInfo.Dist.Tarball)
 	if err != nil {
 		return err
@@ -251,6 +265,38 @@ func DownloadPackage(packageInfo *schema.PackageVersionInfo, destination string)
 			}
 			outFile.Close()
 		}
+	}
+
+	// Binary linking
+	packageJsonPath := filepath.Join(destination, "package.json")
+	packageJsonFile, err := os.Open(packageJsonPath)
+	if err != nil {
+		return err
+	}
+	defer packageJsonFile.Close()
+
+	var packageJson struct {
+		Bin map[string]string `json:"bin"`
+	}
+	if err := json.NewDecoder(packageJsonFile).Decode(&packageJson); err != nil {
+		return err
+	}
+
+	binDir := filepath.Join(baseDir, "node_modules", ".bin")
+	if err := os.MkdirAll(binDir, os.ModePerm); err != nil {
+		return err
+	}
+
+	for binName, binPath := range packageJson.Bin {
+		binLinkPath := filepath.Join(binDir, binName)
+		binTargetPath := filepath.Join(destination, binPath)
+
+		binMutex.Lock()
+		if err := os.Symlink(binTargetPath, binLinkPath); err != nil {
+			binMutex.Unlock()
+			return err
+		}
+		binMutex.Unlock()
 	}
 
 	return nil
