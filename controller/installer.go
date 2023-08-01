@@ -55,7 +55,6 @@ func Install(isRoot bool, args ...string) error {
 	}
 
 	deps, lockDeps, err := utils.ReadDepFiles(depFile, lockFile)
-
 	if err != nil {
 		return fmt.Errorf("error reading dependency files: %v", err)
 	}
@@ -73,10 +72,12 @@ func Install(isRoot bool, args ...string) error {
 				defer wg.Done()
 				packageAndVersion := strings.Split(arg, "@")
 				packageName := packageAndVersion[0]
-				packageVersion := "latest"
+				originalPackageVersion := "latest"
 				if len(packageAndVersion) > 1 {
-					packageVersion = packageAndVersion[1]
+					originalPackageVersion = packageAndVersion[1]
 				}
+
+				packageVersion := originalPackageVersion // Use the original version string to fetch the package info
 
 				installedPackagesMutex.Lock()
 				if _, isInstalled := installedPackages[packageName]; isInstalled {
@@ -103,7 +104,7 @@ func Install(isRoot bool, args ...string) error {
 
 				depsMutex.Lock()
 				if isRoot {
-					deps.Dependencies[packageName] = packageInfo.Version
+					deps.Dependencies[packageName] = originalPackageVersion // Save the original version string
 				}
 				lockDeps.Dependencies[packageName] = &schema.Dependency{
 					Version:       packageInfo.Version,
