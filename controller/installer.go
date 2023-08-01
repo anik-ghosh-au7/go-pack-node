@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Masterminds/semver"
 	"github.com/anik-ghosh-au7/go-pack-node/schema"
 	"github.com/anik-ghosh-au7/go-pack-node/utils"
 )
@@ -93,7 +94,7 @@ func Install(isRoot bool, args ...string) error {
 
 				cacheDir := filepath.Join(baseDir, ".cache", packageName, packageInfo.Version)
 				if !utils.DirExists(cacheDir) {
-					err := DownloadPackage(packageInfo, cacheDir, baseDir)
+					err := DownloadAndExtractPackage(packageInfo, cacheDir, baseDir)
 					if err != nil {
 						log.Printf("error downloading package: %v", err)
 						return
@@ -170,11 +171,8 @@ func FetchPackageInfo(packageName string, version string) (*schema.PackageVersio
 	encodedPackageName := url.PathEscape(packageName)
 
 	resp, err := http.Get(fmt.Sprintf("https://registry.npmjs.org/%s", encodedPackageName))
-	if err != nil || resp.StatusCode != 200 {
-		resp, err = http.Get(fmt.Sprintf("https://registry.npmjs.org/%s/%s", encodedPackageName, version))
-		if err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -193,8 +191,39 @@ func FetchPackageInfo(packageName string, version string) (*schema.PackageVersio
 		return nil, err
 	}
 
+	// Use the latest version if no specific version is provided
 	if version == "latest" || version == "" {
 		version = packageInfo.DistTags.Latest
+	} else {
+		// Handle versioning syntax
+		constraint, err := semver.NewConstraint(version)
+		if err != nil {
+			return nil, err
+		}
+
+		var latestValidVersion *semver.Version
+		for availableVersion := range packageInfo.Versions {
+			availableSemver, err := semver.NewVersion(availableVersion)
+			if err != nil {
+				continue
+			}
+
+			if constraint.Check(availableSemver) {
+				if latestValidVersion == nil {
+					latestValidVersion = availableSemver
+				} else {
+					if availableSemver.GreaterThan(latestValidVersion) {
+						latestValidVersion = availableSemver
+					}
+				}
+			}
+		}
+
+		if latestValidVersion == nil {
+			return nil, fmt.Errorf("no valid versions found for package %s with version constraint %s", packageName, version)
+		}
+
+		version = latestValidVersion.String()
 	}
 
 	versionInfo, exists := packageInfo.Versions[version]
@@ -211,7 +240,7 @@ func FetchPackageInfo(packageName string, version string) (*schema.PackageVersio
 	return pkgVersionInfo, nil
 }
 
-func DownloadPackage(packageInfo *schema.PackageVersionInfo, destination string, baseDir string) error {
+func DownloadAndExtractPackage(packageInfo *schema.PackageVersionInfo, destination string, baseDir string) error {
 	resp, err := http.Get(packageInfo.Dist.Tarball)
 	if err != nil {
 		return err
