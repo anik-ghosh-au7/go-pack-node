@@ -14,8 +14,8 @@ import (
 
 func Initialize(yFlag bool, dir string) error {
 	cacheDir := filepath.Join(dir, ".cache")
-	depFile := filepath.Join(dir, "dependencies.json")
-	lockFile := filepath.Join(dir, "dependencies-lock.json")
+	depFile := filepath.Join(dir, "package.json")
+	lockFile := filepath.Join(dir, "package-lock.json")
 	depDir := filepath.Join(dir, "node_modules")
 
 	utils.CheckOrCreateDir(cacheDir)
@@ -25,7 +25,7 @@ func Initialize(yFlag bool, dir string) error {
 
 	defaultName := utils.ToSnakeCase(filepath.Base(dir))
 
-	dep := schema.Dependency{
+	dep := schema.Package{
 		Name:            defaultName,
 		Version:         "1.0.0",
 		Description:     "My App",
@@ -61,8 +61,8 @@ func Initialize(yFlag bool, dir string) error {
 	}
 
 	// Initialize an empty DependencyLock struct
-	lock := schema.DependencyLock{
-		Dependencies: make(map[string]*schema.LockDependency),
+	lock := schema.PackageLock{
+		Dependencies: make(map[string]*schema.Dependency),
 	}
 
 	// Marshal the lock struct to JSON
@@ -71,7 +71,7 @@ func Initialize(yFlag bool, dir string) error {
 		return err
 	}
 
-	// Write the JSON data to the dependencies-lock.json file
+	// Write the JSON data to the package-lock.json file
 	err = os.WriteFile(lockFile, lockData, 0644)
 	if err != nil {
 		return err

@@ -29,11 +29,11 @@ func Install(isRoot bool, args ...string) error {
 	baseDir, _ := os.Getwd()
 	cacheDir := filepath.Join(baseDir, ".cache")
 	depDir := filepath.Join(baseDir, "node_modules")
-	depFile := filepath.Join(baseDir, "dependencies.json")
-	lockFile := filepath.Join(baseDir, "dependencies-lock.json")
+	depFile := filepath.Join(baseDir, "package.json")
+	lockFile := filepath.Join(baseDir, "package-lock.json")
 
 	if _, err := os.Stat(depFile); os.IsNotExist(err) {
-		return fmt.Errorf("no dependencies.json file found in project root. please initialize the project first")
+		return fmt.Errorf("no package.json file found in project root. please initialize the project first")
 	}
 
 	for _, dir := range []string{cacheDir, depDir, lockFile} {
@@ -103,7 +103,7 @@ func Install(isRoot bool, args ...string) error {
 				if isRoot {
 					deps.Dependencies[packageName] = packageInfo.Version
 				}
-				lockDeps.Dependencies[packageName] = &schema.LockDependency{
+				lockDeps.Dependencies[packageName] = &schema.Dependency{
 					Version:       packageInfo.Version,
 					Resolved:      packageInfo.Dist.Tarball,
 					ParentPackage: packageName,

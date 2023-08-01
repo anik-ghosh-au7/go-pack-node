@@ -13,15 +13,15 @@ import (
 
 func Run(scriptName string) error {
 	wg := &sync.WaitGroup{}
-	file, err := os.ReadFile("dependencies.json")
+	file, err := os.ReadFile("package.json")
 	if err != nil {
-		return fmt.Errorf("error reading dependencies.json: %v", err)
+		return fmt.Errorf("error reading package.json: %v", err)
 	}
 
-	var deps schema.Dependency
+	var deps schema.Package
 	err = json.Unmarshal(file, &deps)
 	if err != nil {
-		return fmt.Errorf("error parsing dependencies.json: %v", err)
+		return fmt.Errorf("error parsing package.json: %v", err)
 	}
 
 	scriptCmd, ok := deps.Scripts[scriptName]

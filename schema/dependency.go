@@ -1,6 +1,6 @@
 package schema
 
-type Dependency struct {
+type Package struct {
 	Name            string            `json:"name"`
 	Version         string            `json:"version"`
 	Description     string            `json:"description"`
@@ -10,13 +10,13 @@ type Dependency struct {
 	DevDependencies map[string]string `json:"devDependencies"`
 }
 
-type LockDependency struct {
+type Dependency struct {
 	Version       string            `json:"version"`
 	ParentPackage string            `json:"parentPackage"`
 	Resolved      string            `json:"resolved"`
 	Dependencies  map[string]string `json:"dependencies"`
 }
 
-type DependencyLock struct {
-	Dependencies map[string]*LockDependency `json:"dependencies"`
+type PackageLock struct {
+	Dependencies map[string]*Dependency `json:"dependencies"`
 }

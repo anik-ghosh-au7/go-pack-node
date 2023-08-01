@@ -6,21 +6,21 @@ Go-Pack-Node is a demonstration of a Node.js package manager, built in Go. It pr
 
 - **Project Initialization**: Sets up a new Node.js project with either default or user-provided configurations.
 - **Dependency Management**: Installs, updates, and manages Node.js packages for your project.
-- **Script Execution**: Runs scripts defined in your project's `dependencies.json` file.
+- **Script Execution**: Runs scripts defined in your project's `package.json` file.
 
 ## How it works
 
 ### Project Initialization
 
-The `Initialize` function in `controller/initializer.go` sets up a new Node.js project. It creates the necessary directories and files such as `.cache`, `dependencies.json`, `dependencies-lock.json`, and `node_modules`. The function prompts the user to enter project details like name, version, description, and entry point unless the `-y` flag is provided, in which case it uses default values.
+The `Initialize` function in `controller/initializer.go` sets up a new Node.js project. It creates the necessary directories and files such as `.cache`, `package.json`, `package-lock.json`, and `node_modules`. The function prompts the user to enter project details like name, version, description, and entry point unless the `-y` flag is provided, in which case it uses default values.
 
 ### Dependency Management
 
-The `Install` function in `controller/installer.go` manages the Node.js packages for your project. It reads the `dependencies.json` file to get the list of dependencies and their versions. If no arguments are provided, it installs all the dependencies listed in the `dependencies.json` file. Otherwise, it installs the packages provided as arguments. The function fetches the package information from the npm registry, downloads the package, and copies it to the `node_modules` directory.
+The `Install` function in `controller/installer.go` manages the Node.js packages for your project. It reads the `package.json` file to get the list of dependencies and their versions. If no arguments are provided, it installs all the dependencies listed in the `package.json` file. Otherwise, it installs the packages provided as arguments. The function fetches the package information from the npm registry, downloads the package, and copies it to the `node_modules` directory.
 
 ### Script Execution
 
-The `Run` function in `controller/runner.go` executes scripts defined in your project's `dependencies.json` file. It reads the `dependencies.json` file, retrieves the script command, and executes it.
+The `Run` function in `controller/runner.go` executes scripts defined in your project's `package.json` file. It reads the file, retrieves the script command, and executes it.
 
 ## Usage
 

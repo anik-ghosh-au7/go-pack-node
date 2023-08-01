@@ -98,20 +98,20 @@ func CopyFile(srcFile string, dstFile string) (err error) {
 	return
 }
 
-func ReadDepFiles(depFile string, lockFile string) (*schema.Dependency, *schema.DependencyLock, error) {
-	dep := &schema.Dependency{}
-	lock := &schema.DependencyLock{}
+func ReadDepFiles(depFile string, lockFile string) (*schema.Package, *schema.PackageLock, error) {
+	dep := &schema.Package{}
+	lock := &schema.PackageLock{}
 
 	file, err := os.ReadFile(depFile)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error reading dependencies file: %s", err)
+		return nil, nil, fmt.Errorf("error reading package file: %s", err)
 	}
 	if len(file) == 0 {
-		return nil, nil, fmt.Errorf("dependencies file is empty")
+		return nil, nil, fmt.Errorf("package file is empty")
 	}
 	err = json.Unmarshal(file, dep)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error unmarshalling dependencies: %s", err)
+		return nil, nil, fmt.Errorf("error unmarshalling package: %s", err)
 	}
 
 	if dep.Dependencies == nil {
@@ -131,14 +131,14 @@ func ReadDepFiles(depFile string, lockFile string) (*schema.Dependency, *schema.
 	}
 
 	if lock.Dependencies == nil {
-		lock.Dependencies = make(map[string]*schema.LockDependency)
+		lock.Dependencies = make(map[string]*schema.Dependency)
 	}
 
 	return dep, lock, nil
 }
 
-func WriteDepFiles(depFile string, lockFile string, dep *schema.Dependency, lock *schema.DependencyLock) {
-	// Marshal dependencies.json
+func WriteDepFiles(depFile string, lockFile string, dep *schema.Package, lock *schema.PackageLock) {
+	// Marshal package.json
 	depData, err := json.MarshalIndent(dep, "", "  ")
 	if err != nil {
 		fmt.Println(err)
@@ -151,7 +151,7 @@ func WriteDepFiles(depFile string, lockFile string, dep *schema.Dependency, lock
 	fileMutex.Lock()
 	defer fileMutex.Unlock()
 
-	// Marshal dependencies-lock.json
+	// Marshal package-lock.json
 	lockData, err := json.MarshalIndent(lock, "", "  ")
 	if err != nil {
 		fmt.Println(err)
@@ -170,7 +170,7 @@ func DirExists(path string) bool {
 	return info.IsDir()
 }
 
-func ReadLockFile(lockFile string) (*schema.LockDependency, error) {
+func ReadLockFile(lockFile string) (*schema.Dependency, error) {
 	// Read the file
 	fileBytes, err := os.ReadFile(lockFile)
 	if err != nil {
@@ -178,7 +178,7 @@ func ReadLockFile(lockFile string) (*schema.LockDependency, error) {
 	}
 
 	// Unmarshal the JSON
-	lockDeps := &schema.LockDependency{}
+	lockDeps := &schema.Dependency{}
 	err = json.Unmarshal(fileBytes, lockDeps)
 	if err != nil {
 		return nil, err
