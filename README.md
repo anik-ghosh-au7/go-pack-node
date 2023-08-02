@@ -35,6 +35,12 @@ To use this package manager, you need to have Go installed on your machine. Clon
 
 - Some packages with internal dependencies may cause bugs. This is a known issue and it will be addressed in the future.
 
+## Roadmap
+
+- While copying from cache check .package-lock.json file if version already exists in node_modules, if yes skip
+- Add functionality to uninstall, update package.json, package-lock.json & .package-lock.json accordingly
+- Add sha type and hash for the packages to verify integrity in package-lock.json & .package-lock.json
+
 ## Contributing
 
 Although this project is primarily for demonstration purposes, contributions are still welcome. If you have found a bug, have a question, or want to propose a feature, feel free to submit a pull request or create an issue to discuss the changes.
